@@ -3,13 +3,17 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./interfaces/IFactory.sol";
+import "./interfaces/IExchange.sol";
 
 contract Exchange is ERC20 {
   address public tokenAddress;
+  address public factoryAddress;
 
   constructor(address _token) ERC20("Uniswap", "UWP") {
     require(_token != address(0), 'Invalid token address');
     tokenAddress = _token;
+    factoryAddress = msg.sender;
   }
 
   function getReserve() public view returns(uint256) {
@@ -53,10 +57,11 @@ contract Exchange is ERC20 {
   }
 
   function swapFromEthToToken(uint256 _minOutput) public payable {
-    uint256 tokenReserve = getReserve();
-    uint256 tokenOutputAmount = _getOutputAmount(msg.value, address(this).balance - msg.value, tokenReserve);
-    require (tokenOutputAmount >= _minOutput, 'Insufficient output amount');
-    IERC20(tokenAddress).transferFrom(address(this), msg.sender, tokenOutputAmount);
+    _swapFromEthToToken(_minOutput, msg.sender);
+  }
+
+  function swapFromEthToTokenWithRecipient(uint256 _minOutput, address _recipient) public payable {
+    _swapFromEthToToken(_minOutput, _recipient);
   }
 
   function swapFromTokenToEth(uint256 _tokenInputAmount, uint256 _minOutput) public {
@@ -66,6 +71,17 @@ contract Exchange is ERC20 {
     
     IERC20(tokenAddress).transferFrom(msg.sender, address(this), _tokenInputAmount);
     payable(msg.sender).transfer(ethOutputAmount);
+  }
+
+  function swapFromTokenToToken(uint256 _fromTokenAmount, uint256 _minToTokenAmount, address _toTokenAddress) public {
+    address secondaryPool = IFactory(factoryAddress).getExchangePool(_toTokenAddress);
+    require (secondaryPool != address(this) && secondaryPool != address(0), "Invalid pool address");
+    
+    uint256 tokenReserve = getReserve();
+    uint256 ethOutputAmount = _getOutputAmount(_fromTokenAmount, tokenReserve, address(this).balance);
+    
+    IERC20(tokenAddress).transferFrom(msg.sender, address(this), _fromTokenAmount);
+    IExchange(secondaryPool).swapFromEthToTokenWithRecipient{value: ethOutputAmount}(_minToTokenAmount, msg.sender);
   }
 
   function removeLiquidity(uint256 _lpAmount) public returns(uint256, uint256) {
@@ -79,6 +95,13 @@ contract Exchange is ERC20 {
     IERC20(tokenAddress).transfer(msg.sender, tokenAmount);
 
     return (ethAmount, tokenAmount);
+  }
+
+  function _swapFromEthToToken(uint256 _minOutput, address _recipient) private {
+    uint256 tokenReserve = getReserve();
+    uint256 tokenOutputAmount = _getOutputAmount(msg.value, address(this).balance - msg.value, tokenReserve);
+    require (tokenOutputAmount >= _minOutput, 'Insufficient output amount');
+    IERC20(tokenAddress).transferFrom(address(this), _recipient, tokenOutputAmount);
   }
 
   function _getOutputAmount(uint256 inputAmount, uint256 inputReserve, uint256 outputReserve) private pure returns(uint256) {
