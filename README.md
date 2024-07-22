@@ -4,5 +4,5 @@ This project aims to reimplement the Uniswap V1 smart contract. The goal is to u
 
 ### Objectives
 
-1. Understand the Uniswap V1 Protocol: Study the original Uniswap V1 smart contracts and associated documentation to gain a comprehensive understanding of the protocol's structure and functionalities.
-2. Design and Implement the Smart Contract: Develop the Uniswap V1 smart contract from scratch, replicating the core functionalities of the original protocol.
+* Understand the Uniswap V1 Protocol: Study the original Uniswap V1 smart contracts and associated documentation to gain a comprehensive understanding of the protocol's structure and functionalities.
+* Design and Implement the Smart Contract: Develop the Uniswap V1 smart contract from scratch, replicating the core functionalities of the original protocol.
